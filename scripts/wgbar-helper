@@ -1,0 +1,35 @@
+#!/bin/bash
+# wgbar-helper: the only command WireGuardBar runs as root (through sudo).
+# Installed root-owned at /Library/PrivilegedHelperTools/wgbar-helper by install-helper.sh.
+set -euo pipefail
+export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+CONF_DIR=/etc/wireguard   # root-owned, so a symlink swap can't redirect reads/writes
+RUN_DIR=/var/run/wireguard
+
+die() { echo "$*" >&2; exit 1; }
+conf() {
+  [[ "${1:-}" =~ ^[a-zA-Z0-9_=+.-]{1,15}$ ]] || die "invalid tunnel name: ${1:-}"
+  [ -f "$CONF_DIR/$1.conf" ] || die "no config named $1 in $CONF_DIR"
+  echo "$CONF_DIR/$1.conf"
+}
+
+case "${1:-}" in
+list)
+  for f in "$CONF_DIR"/*.conf; do [ -e "$f" ] && basename "$f" .conf; done; true ;;
+status)
+  for f in "$RUN_DIR"/*.name; do
+    [ -e "$f" ] && printf 'tunnel\t%s\t%s\n' "$(basename "$f" .name)" "$(cat "$f")"
+  done
+  # Hide the interface private key (5-field lines) and peer preshared keys (9-field lines).
+  wg show all dump | awk -F'\t' -v OFS='\t' 'NF==5{$2="(hidden)"} NF==9{$3="(hidden)"} {print}' ;;
+up|down)
+  c=$(conf "${2:-}"); wg-quick "$1" "$c" ;;
+read)
+  c=$(conf "${2:-}"); cat "$c" ;;
+write)
+  c=$(conf "${2:-}")   # existing tunnels only
+  tmp=$(mktemp "$CONF_DIR/.wgbar.XXXXXX"); trap 'rm -f "$tmp"' EXIT
+  cat > "$tmp"; chmod 600 "$tmp"; mv "$tmp" "$c"; trap - EXIT ;;
+*)
+  die "usage: wgbar-helper list | status | up NAME | down NAME | read NAME | write NAME" ;;
+esac
