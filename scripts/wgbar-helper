@@ -14,9 +14,8 @@ conf() {
 }
 
 case "${1:-}" in
-list)
-  for f in "$CONF_DIR"/*.conf; do [ -e "$f" ] && basename "$f" .conf; done; true ;;
 status)
+  for f in "$CONF_DIR"/*.conf; do [ -e "$f" ] && printf 'config\t%s\n' "$(basename "$f" .conf)"; done
   for f in "$RUN_DIR"/*.name; do
     [ -e "$f" ] && printf 'tunnel\t%s\t%s\n' "$(basename "$f" .name)" "$(cat "$f")"
   done
@@ -31,5 +30,5 @@ write)
   tmp=$(mktemp "$CONF_DIR/.wgbar.XXXXXX"); trap 'rm -f "$tmp"' EXIT
   cat > "$tmp"; chmod 600 "$tmp"; mv "$tmp" "$c"; trap - EXIT ;;
 *)
-  die "usage: wgbar-helper list | status | up NAME | down NAME | read NAME | write NAME" ;;
+  die "usage: wgbar-helper status | up NAME | down NAME | read NAME | write NAME" ;;
 esac
