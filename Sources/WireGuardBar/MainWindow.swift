@@ -39,7 +39,10 @@ struct MainWindow: View {
             }
         }
         .onChange(of: store.tunnels.map(\.name), initial: true) { _, names in
-            if selection == nil || !names.contains(selection!) { selection = names.first }
+            // First open (or the selected tunnel vanished): prefer a tunnel that's on.
+            if selection == nil || !names.contains(selection!) {
+                selection = store.tunnels.first(where: \.isUp)?.name ?? names.first
+            }
         }
     }
 }
