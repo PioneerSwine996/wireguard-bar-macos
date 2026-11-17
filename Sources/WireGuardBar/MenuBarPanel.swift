@@ -35,6 +35,7 @@ struct MenuBarPanel: View {
 
             HStack {
                 Button("Manage Tunnels…") {
+                    NSApp.keyWindow?.close()   // the menu bar panel; it doesn't close on its own
                     openWindow(id: "main")
                     NSApp.activate()
                 }
