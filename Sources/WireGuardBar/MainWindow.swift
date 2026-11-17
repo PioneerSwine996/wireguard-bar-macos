@@ -74,8 +74,6 @@ struct TunnelDetail: View {
 
             Section("Details") {
                 LabeledContent("Endpoint", value: tunnel.endpoint ?? "—")
-                LabeledContent("Interface", value: tunnel.interface ?? "—")
-                LabeledContent("Peers", value: tunnel.isUp ? "\(tunnel.peers.count)" : "—")
             }
 
             Section {
