@@ -5,7 +5,8 @@ let package = Package(
     name: "WireGuardBar",
     platforms: [.macOS(.v15)],
     targets: [
-        .executableTarget(name: "WireGuardBar", path: "Sources/WireGuardBar")
+        .executableTarget(name: "WireGuardBar", path: "Sources/WireGuardBar"),
+        .testTarget(name: "WireGuardBarTests", dependencies: ["WireGuardBar"], path: "Tests")
     ],
     swiftLanguageModes: [.v5]
 )

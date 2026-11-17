@@ -3,7 +3,7 @@ import Observation
 
 @MainActor @Observable
 final class TunnelStore {
-    private(set) var tunnels: [Tunnel] = []
+    var tunnels: [Tunnel] = []
     private(set) var busy: Set<String> = []
     var error: String?
 
