@@ -1,25 +1,18 @@
 import LocalAuthentication
 import SwiftUI
 
-/// Warns that the file holds the private key, requires Touch ID (or the login password
-/// when Touch ID isn't available), then opens the editor.
+/// Requires Touch ID (or the login password when Touch ID isn't available), then opens the
+/// editor. The private-key warning is part of the Touch ID prompt itself.
 struct EditConfigButton: View {
     @Environment(TunnelStore.self) private var store
     let name: String
 
-    @State private var showingWarning = false
     @State private var showingEditor = false
     @State private var text = ""
     @State private var failure: String?
 
     var body: some View {
-        Button("Edit Configuration…", systemImage: "lock.doc") { showingWarning = true }
-            .alert("This shows the private key", isPresented: $showingWarning) {
-                Button("Authenticate with Touch ID") { Task { await unlock() } }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("The \(name) configuration contains this device's private key in plain text. Anyone who sees it can impersonate this device on the VPN. Make sure nobody is looking at your screen and you aren't screen sharing or recording.")
-            }
+        Button("Edit Configuration…", systemImage: "lock.doc") { Task { await unlock() } }
             .alert("Couldn't open the configuration", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -31,10 +24,15 @@ struct EditConfigButton: View {
     }
 
     private func unlock() async {
+        // The Touch ID prompt runs in another process; when it closes macOS hands focus back
+        // to the previously active app, so remember our window and bring it back afterwards.
+        let window = NSApp.keyWindow
         do {
             try await LAContext().evaluatePolicy(
                 .deviceOwnerAuthentication,
-                localizedReason: "show the \(name) configuration, including its private key")
+                localizedReason: "show the \(name) configuration, which contains this device's private key in plain text. Make sure nobody can see your screen")
+            NSApp.activate()
+            window?.makeKeyAndOrderFront(nil)
             text = try await store.readConfig(name)
             showingEditor = true
         } catch let error as LAError where error.code == .userCancel || error.code == .appCancel {
