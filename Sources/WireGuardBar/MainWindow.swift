@@ -68,12 +68,9 @@ struct TunnelDetail: View {
                 LabeledContent("Data sent", value: tunnel.isUp ? tunnel.sent.byteString : "—")
                 LabeledContent("Data received", value: tunnel.isUp ? tunnel.received.byteString : "—")
                 LabeledContent("Latest handshake", value: tunnel.isUp ? handshakeString(tunnel.latestHandshake) : "—")
+                LabeledContent("Endpoint", value: tunnel.endpoint ?? "—")
             } header: {
                 Text(tunnel.name).font(.title2.bold())
-            }
-
-            Section("Details") {
-                LabeledContent("Endpoint", value: tunnel.endpoint ?? "—")
             }
 
             Section {
