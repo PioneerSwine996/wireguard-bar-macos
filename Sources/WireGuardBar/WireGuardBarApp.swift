@@ -15,7 +15,7 @@ struct WireGuardBarApp: App {
         MenuBarExtra {
             MenuBarPanel().environment(store)
         } label: {
-            Image(systemName: store.tunnels.contains(where: \.isUp) ? "lock.shield.fill" : "lock.shield")
+            Image(systemName: store.tunnels.contains(where: \.isUp) ? "lock.shield.fill" : "shield.slash")
         }
         .menuBarExtraStyle(.window)
     }

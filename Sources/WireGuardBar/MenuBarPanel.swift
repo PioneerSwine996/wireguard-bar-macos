@@ -15,13 +15,20 @@ struct MenuBarPanel: View {
 
             Divider().overlay(.white.opacity(0.15))
 
-            if store.tunnels.isEmpty {
-                Text(store.error ?? "No tunnels in /etc/wireguard")
+            if store.tunnels.isEmpty && store.error == nil {
+                Text("No tunnels in /etc/wireguard")
                     .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
             ForEach(store.tunnels) { tunnel in
                 MenuTunnelRow(tunnel: tunnel)
+            }
+            if let conflict = store.appStoreConflict {
+                Notice(text: "The App Store WireGuard app has \"\(conflict)\" connected. Turn it off there, or both apps fight over the same tunnel.",
+                       color: .orange)
+            }
+            if let error = store.error {
+                Notice(text: error, color: .red)
+                    .onTapGesture { store.error = nil }
             }
 
             Divider().overlay(.white.opacity(0.15))
@@ -39,11 +46,22 @@ struct MenuBarPanel: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(16)
+        .padding(18)
         .frame(width: 320)
-        .background(.black, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .padding(8)
+        // Fill the whole menu window edge to edge; the system window supplies the rounded corners.
+        .background(Color.black.ignoresSafeArea())
         .environment(\.colorScheme, .dark)
+    }
+}
+
+private struct Notice: View {
+    let text: String
+    let color: Color
+    var body: some View {
+        Label(text, systemImage: "exclamationmark.triangle.fill")
+            .font(.caption)
+            .foregroundStyle(color)
+            .fixedSize(horizontal: false, vertical: true)
     }
 }
 

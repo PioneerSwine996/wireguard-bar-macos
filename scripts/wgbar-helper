@@ -8,7 +8,7 @@ RUN_DIR=/var/run/wireguard
 
 die() { echo "$*" >&2; exit 1; }
 conf() {
-  [[ "${1:-}" =~ ^[a-zA-Z0-9_=+.-]{1,15}$ ]] || die "invalid tunnel name: ${1:-}"
+  [[ "${1:-}" =~ ^[a-zA-Z0-9_=+.-]{1,15}$ ]] || die "\"${1:-}\" can't be used as a tunnel name: wg-quick needs 1-15 letters, digits or _=+.- (no spaces or brackets). Rename it, e.g. sudo mv \"$CONF_DIR/${1:-}.conf\" $CONF_DIR/home2.conf"
   [ -f "$CONF_DIR/$1.conf" ] || die "no config named $1 in $CONF_DIR"
   echo "$CONF_DIR/$1.conf"
 }

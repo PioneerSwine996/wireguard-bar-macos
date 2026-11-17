@@ -22,12 +22,36 @@ final class TunnelStore {
         guard !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
+        appStoreConflict = await Self.connectedAppStoreTunnel()
         do {
             tunnels = Tunnel.parse(status: try await Helper.run("status"))
-            error = nil
         } catch {
             self.error = error.localizedDescription
         }
+    }
+
+    /// Name of a tunnel the App Store WireGuard app has connected, if any (from `scutil --nc list`).
+    private(set) var appStoreConflict: String?
+
+    nonisolated private static func connectedAppStoreTunnel() async -> String? {
+        await Task.detached {
+            let process = Process()
+            process.executableURL = URL(fileURLWithPath: "/usr/sbin/scutil")
+            process.arguments = ["--nc", "list"]
+            let out = Pipe()
+            process.standardOutput = out
+            process.standardError = FileHandle.nullDevice
+            guard (try? process.run()) != nil else { return nil }
+            let text = String(decoding: out.fileHandleForReading.readDataToEndOfFile(), as: UTF8.self)
+            process.waitUntilExit()
+            // e.g. * (Connected)  E0A7…  VPN (com.wireguard.macos) "Home (No-PiHole)"  [VPN:com.wireguard.macos]
+            for line in text.split(separator: "\n")
+            where line.contains("(Connected)") && line.contains("com.wireguard.macos") {
+                let quoted = line.split(separator: "\"")
+                if quoted.count >= 2 { return String(quoted[1]) }
+            }
+            return nil
+        }.value
     }
 
     func setEnabled(_ tunnel: Tunnel, _ enabled: Bool) async {
