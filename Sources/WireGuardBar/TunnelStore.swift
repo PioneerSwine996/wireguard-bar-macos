@@ -55,9 +55,15 @@ final class TunnelStore {
     }
 
     func setEnabled(_ tunnel: Tunnel, _ enabled: Bool) async {
-        busy.insert(tunnel.name)
-        defer { busy.remove(tunnel.name) }
+        // Only one tunnel at a time: turning one on first turns the others off.
+        let others = enabled ? tunnels.filter { $0.isUp && $0.name != tunnel.name }.map(\.name) : []
+        let involved = Set(others + [tunnel.name])
+        busy.formUnion(involved)
+        defer { busy.subtract(involved) }
         do {
+            for name in others {
+                _ = try await Helper.run("down", name)
+            }
             _ = try await Helper.run(enabled ? "up" : "down", tunnel.name)
         } catch {
             self.error = error.localizedDescription
