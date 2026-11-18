@@ -26,6 +26,8 @@ final class TunnelStore {
     /// Current Wi-Fi name; macOS only reveals it to apps with Location access.
     private(set) var currentSSID: String?
     private(set) var locationStatus: CLAuthorizationStatus = .notDetermined
+    /// This Mac's IPv4 address on the local network (Wi-Fi/Ethernet), read on-device.
+    private(set) var localIP: String?
     @ObservationIgnored private let location = CLLocationManager()
     @ObservationIgnored private var lastSSID: String??   // nil = not read yet
     @ObservationIgnored private var autoConnected: String?   // tunnel that on-demand turned on
@@ -49,6 +51,7 @@ final class TunnelStore {
         }
         locationStatus = location.authorizationStatus
         currentSSID = CWWiFiClient.shared().interface()?.ssid()
+        localIP = Self.localIPv4()
         refreshing = false
         await applyOnDemand()
     }
@@ -68,6 +71,26 @@ final class TunnelStore {
             autoConnected = nil
             await setEnabled(tunnel, false)
         }
+    }
+
+    /// First up-and-running IPv4 address on an en* interface, preferring en0 (Wi-Fi on most Macs).
+    nonisolated static func localIPv4() -> String? {
+        var head: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&head) == 0, let first = head else { return nil }
+        defer { freeifaddrs(head) }
+        let upRunning = UInt32(IFF_UP | IFF_RUNNING)
+        var best: (name: String, ip: String)?
+        for ifa in sequence(first: first, next: { $0.pointee.ifa_next }).map(\.pointee) {
+            guard let addr = ifa.ifa_addr, addr.pointee.sa_family == UInt8(AF_INET),
+                  ifa.ifa_flags & upRunning == upRunning else { continue }
+            let name = String(cString: ifa.ifa_name)
+            guard name.hasPrefix("en") else { continue }
+            var host = [CChar](repeating: 0, count: Int(NI_MAXHOST))
+            guard getnameinfo(addr, socklen_t(addr.pointee.sa_len), &host, socklen_t(host.count),
+                              nil, 0, NI_NUMERICHOST) == 0 else { continue }
+            if best == nil || name == "en0" { best = (name, String(cString: host)) }
+        }
+        return best?.ip
     }
 
     func addOnDemand(_ ssid: String, to tunnel: String) {
