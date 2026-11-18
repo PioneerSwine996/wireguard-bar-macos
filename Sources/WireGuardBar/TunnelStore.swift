@@ -19,6 +19,25 @@ final class TunnelStore {
     var onDemand: [String: [String]] = UserDefaults.standard.dictionary(forKey: "onDemand") as? [String: [String]] ?? [:] {
         didSet { UserDefaults.standard.set(onDemand, forKey: "onDemand") }
     }
+    /// On-Demand switch per tunnel name; the network list is kept while it's off.
+    var onDemandEnabled: [String: Bool] = UserDefaults.standard.dictionary(forKey: "onDemandEnabled") as? [String: Bool] ?? [:] {
+        didSet { UserDefaults.standard.set(onDemandEnabled, forKey: "onDemandEnabled") }
+    }
+
+    /// Defaults to on for tunnels that already have networks, so existing setups keep working.
+    func isOnDemandEnabled(_ tunnel: String) -> Bool {
+        onDemandEnabled[tunnel] ?? (onDemand[tunnel]?.isEmpty == false)
+    }
+
+    func setOnDemandEnabled(_ on: Bool, for tunnel: String) {
+        onDemandEnabled[tunnel] = on
+        if on {
+            lastSSID = nil   // check the current network right away
+        } else if autoConnected == tunnel {
+            autoConnected = nil   // stays connected; it just won't auto-disconnect
+        }
+    }
+
     /// "Route all traffic" per tunnel name. Missing = run the config's own AllowedIPs untouched.
     var routeAll: [String: Bool] = UserDefaults.standard.dictionary(forKey: "routeAll") as? [String: Bool] ?? [:] {
         didSet { UserDefaults.standard.set(routeAll, forKey: "routeAll") }
@@ -62,7 +81,7 @@ final class TunnelStore {
         guard busy.isEmpty, lastSSID != .some(currentSSID) else { return }
         lastSSID = .some(currentSSID)
         if let ssid = currentSSID,
-           let target = tunnels.first(where: { onDemand[$0.name]?.contains(ssid) == true }) {
+           let target = tunnels.first(where: { isOnDemandEnabled($0.name) && onDemand[$0.name]?.contains(ssid) == true }) {
             if !target.isUp {
                 autoConnected = target.name
                 await setEnabled(target, true)

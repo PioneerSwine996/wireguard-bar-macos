@@ -11,31 +11,39 @@ struct OnDemandSection: View {
 
     var body: some View {
         Section {
-            ForEach(networks, id: \.self) { ssid in
-                HStack {
-                    Label(ssid, systemImage: "wifi")
-                    Spacer()
-                    Button { store.removeOnDemand(ssid, from: tunnel) } label: {
-                        Image(systemName: "minus.circle.fill")
-                    }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Remove \(ssid)")
-                }
-            }
+            Toggle("On-Demand", isOn: Binding(
+                get: { store.isOnDemandEnabled(tunnel) },
+                set: { store.setOnDemandEnabled($0, for: tunnel) }))
 
-            HStack {
-                TextField("Wi-Fi name", text: $newNetwork)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit(addTyped)
-                Button("Add", action: addTyped)
-                    .disabled(newNetwork.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-
-            currentNetworkRow
+            if store.isOnDemandEnabled(tunnel) { networkRows }
         } header: {
-            Text("On-Demand Wi-Fi")
+            Text("On-Demand")
         }
+    }
+
+    @ViewBuilder private var networkRows: some View {
+        ForEach(networks, id: \.self) { ssid in
+            HStack {
+                Label(ssid, systemImage: "wifi")
+                Spacer()
+                Button { store.removeOnDemand(ssid, from: tunnel) } label: {
+                    Image(systemName: "minus.circle.fill")
+                }
+                .buttonStyle(.borderless)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Remove \(ssid)")
+            }
+        }
+
+        HStack {
+            TextField("Wi-Fi name", text: $newNetwork)
+                .textFieldStyle(.roundedBorder)
+                .onSubmit(addTyped)
+            Button("Add", action: addTyped)
+                .disabled(newNetwork.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+
+        currentNetworkRow
     }
 
     @ViewBuilder private var currentNetworkRow: some View {
