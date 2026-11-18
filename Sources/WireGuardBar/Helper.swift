@@ -35,6 +35,10 @@ enum Helper {
                 if text.contains("a password is required") || text.contains("command not found") || text.contains("No such file") {
                     throw Failure(message: "The helper isn't installed. Run: sudo ./scripts/install-helper.sh")
                 }
+                if text.hasPrefix("usage: wgbar-helper") {
+                    // an older installed helper that doesn't know this command
+                    throw Failure(message: "The installed helper is older than the app. Run: sudo ./scripts/install-helper.sh")
+                }
                 throw Failure(message: text.isEmpty ? "wgbar-helper exited with status \(process.terminationStatus)" : text)
             }
             return String(decoding: output, as: UTF8.self)
