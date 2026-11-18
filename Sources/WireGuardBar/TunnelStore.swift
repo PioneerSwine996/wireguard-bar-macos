@@ -19,6 +19,10 @@ final class TunnelStore {
     var onDemand: [String: [String]] = UserDefaults.standard.dictionary(forKey: "onDemand") as? [String: [String]] ?? [:] {
         didSet { UserDefaults.standard.set(onDemand, forKey: "onDemand") }
     }
+    /// "Route all traffic" per tunnel name. Missing = run the config's own AllowedIPs untouched.
+    var routeAll: [String: Bool] = UserDefaults.standard.dictionary(forKey: "routeAll") as? [String: Bool] ?? [:] {
+        didSet { UserDefaults.standard.set(routeAll, forKey: "routeAll") }
+    }
     /// Current Wi-Fi name; macOS only reveals it to apps with Location access.
     private(set) var currentSSID: String?
     private(set) var locationStatus: CLAuthorizationStatus = .notDetermined
@@ -117,13 +121,36 @@ final class TunnelStore {
             for name in others {
                 _ = try await Helper.run("down", name)
             }
-            _ = try await Helper.run(enabled ? "up" : "down", tunnel.name)
+            if enabled {
+                _ = try await Helper.run(["up", tunnel.name] + (allowedIPs(for: tunnel.name).map { [$0] } ?? []))
+            } else {
+                _ = try await Helper.run("down", tunnel.name)
+            }
         } catch {
             self.error = error.localizedDescription
         }
         let remaining = Self.minimumBusy - Date().timeIntervalSince(started)
         if remaining > 0 { try? await Task.sleep(for: .seconds(remaining)) }
         await refresh()   // before `busy` clears, so the button flips straight to the new state
+    }
+
+    /// AllowedIPs override for the "Route all traffic" toggle, or nil to use the config as written.
+    private func allowedIPs(for name: String) async throws -> String? {
+        guard let all = routeAll[name] else { return nil }
+        if all { return SplitRoutes.all }
+        let routes = SplitRoutes.allowedIPs(fromConfigLines: try await Helper.run("addresses", name))
+        guard !routes.isEmpty else {
+            throw Helper.Failure(message: "\(name) has no Address to build a split tunnel from.")
+        }
+        return routes
+    }
+
+    /// Changes the toggle; a connected tunnel reconnects so the new routes apply.
+    func setRouteAll(_ on: Bool, for tunnel: Tunnel) async {
+        routeAll[tunnel.name] = on
+        guard tunnel.isUp else { return }
+        await setEnabled(tunnel, false)
+        if let fresh = tunnels.first(where: { $0.name == tunnel.name }) { await setEnabled(fresh, true) }
     }
 
     func readConfig(_ name: String) async throws -> String {

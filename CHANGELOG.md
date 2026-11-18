@@ -4,6 +4,7 @@
 
 - Tunnels run through a root-owned, patched copy of `wg-quick` that stops it from hammering `configd`/`airportd`.
 - Import tunnels from `.conf` files with the + button (helper `import` command; re-run the installer to get it).
+- "Route all traffic" toggle per tunnel (split tunnel when off), on-demand Wi-Fi networks, and a minimum 1.5 s loading animation.
 - Only one tunnel can be active at a time; errors and App Store WireGuard conflicts show in the menu bar panel.
 
 ### Design Rationale

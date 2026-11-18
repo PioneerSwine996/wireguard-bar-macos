@@ -11,6 +11,10 @@ enum Helper {
     }
 
     static func run(_ args: String..., input: String? = nil) async throws -> String {
+        try await run(args, input: input)
+    }
+
+    static func run(_ args: [String], input: String? = nil) async throws -> String {
         try await Task.detached {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/usr/bin/sudo")

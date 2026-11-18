@@ -2,10 +2,12 @@
 # wgbar-helper: the only command WireGuardBar runs as root (through sudo).
 # Installed root-owned at /Library/PrivilegedHelperTools/wgbar-helper by install-helper.sh.
 set -euo pipefail
+umask 077   # anything written here (temp configs) is root-only
 export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 CONF_DIR=/etc/wireguard   # root-owned, so a symlink swap can't redirect reads/writes
 RUN_DIR=/var/run/wireguard
 WG_QUICK=/Library/PrivilegedHelperTools/wgbar-wg-quick   # patched copy from install-helper.sh
+OVERRIDE_DIR=/var/run/wgbar   # per-connection config copies with AllowedIPs overridden
 
 die() { echo "$*" >&2; exit 1; }
 name_ok() {
@@ -25,8 +27,27 @@ status)
   done
   # Hide the interface private key (5-field lines) and peer preshared keys (9-field lines).
   wg show all dump | awk -F'\t' -v OFS='\t' 'NF==5{$2="(hidden)"} NF==9{$3="(hidden)"} {print}' ;;
-up|down)
-  c=$(conf "${2:-}"); "$WG_QUICK" "$1" "$c" ;;
+up)
+  # optional 3rd arg: AllowedIPs to use instead of the config's (route-all / split toggle)
+  c=$(conf "${2:-}")
+  if [ -n "${3:-}" ]; then
+    re='^[0-9a-fA-F:./, ]+$'
+    [[ "$3" =~ $re && ${#3} -le 512 ]] || die "invalid AllowedIPs: $3"
+    mkdir -p "$OVERRIDE_DIR"
+    r="$OVERRIDE_DIR/$2.conf"
+    ALLOWED="$3" perl -pe 's/^\s*AllowedIPs\s*=.*$/AllowedIPs = $ENV{ALLOWED}/i' "$c" > "$r"
+    c=$r
+  fi
+  "$WG_QUICK" up "$c" ;;
+down)
+  c=$(conf "${2:-}")
+  r="$OVERRIDE_DIR/$2.conf"
+  [ -f "$r" ] && c=$r
+  "$WG_QUICK" down "$c"
+  rm -f "$r" ;;
+addresses)
+  # Address/DNS lines only (never keys), for computing split-tunnel routes
+  c=$(conf "${2:-}"); grep -iE '^[[:space:]]*(Address|DNS)[[:space:]]*=' "$c" || true ;;
 read)
   c=$(conf "${2:-}"); cat "$c" ;;
 write)
@@ -40,5 +61,5 @@ import)
   tmp=$(mktemp "$CONF_DIR/.wgbar.XXXXXX"); trap 'rm -f "$tmp"' EXIT
   cat > "$tmp"; chmod 600 "$tmp"; mv -n "$tmp" "$c" ;;   # EXIT trap cleans up if mv -n refused
 *)
-  die "usage: wgbar-helper status | import NAME | up NAME | down NAME | read NAME | write NAME" ;;
+  die "usage: wgbar-helper status | addresses NAME | import NAME | up NAME | down NAME | read NAME | write NAME" ;;
 esac
