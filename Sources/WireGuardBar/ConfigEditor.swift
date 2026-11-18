@@ -1,46 +1,82 @@
 import LocalAuthentication
+import LocalAuthenticationEmbeddedUI
 import SwiftUI
 
-/// Requires Touch ID (or the login password when Touch ID isn't available), then opens the
-/// editor. The private-key warning is part of the Touch ID prompt itself.
+/// Opens a sheet that asks for Touch ID inside the window, then becomes the editor.
 struct EditConfigButton: View {
-    @Environment(TunnelStore.self) private var store
     let name: String
-
-    @State private var showingEditor = false
-    @State private var text = ""
-    @State private var failure: String?
+    @State private var showingSheet = false
 
     var body: some View {
-        Button("Edit Configuration…", systemImage: "lock.doc") { Task { await unlock() } }
-            .alert("Couldn't open the configuration", isPresented: Binding(get: { failure != nil }, set: { if !$0 { failure = nil } })) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(failure ?? "")
+        Button("Edit Configuration…", systemImage: "lock.doc") { showingSheet = true }
+            .sheet(isPresented: $showingSheet) { ConfigSheet(name: name) }
+    }
+}
+
+/// Touch ID runs in an embedded `LAAuthenticationView`, so the app never hands focus to a
+/// separate system panel (which, once closed, sends focus to whatever app was active before and
+/// leaves this window behind it). The config text only lives while the sheet is open.
+private struct ConfigSheet: View {
+    @Environment(TunnelStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    let name: String
+
+    @State private var text: String?
+    @State private var failure: String?
+    @State private var context = LAContext()
+
+    var body: some View {
+        if let unlocked = Binding($text) {
+            ConfigEditorSheet(name: name, text: unlocked)
+        } else {
+            VStack(spacing: 14) {
+                TouchIDView(context: context).frame(width: 64, height: 64)
+                Text("Touch ID to show \(name)").font(.headline)
+                Text("The configuration contains this device's private key in plain text. Make sure nobody can see your screen.")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let failure {
+                    Text(failure).font(.caption).foregroundStyle(.red)
+                }
+                Button("Cancel", role: .cancel) { context.invalidate(); dismiss() }
+                    .keyboardShortcut(.cancelAction)
             }
-            .sheet(isPresented: $showingEditor, onDismiss: { text = "" }) {
-                ConfigEditorSheet(name: name, text: $text)
-            }
+            .padding(28)
+            .frame(width: 360)
+            .task { await unlock() }
+        }
     }
 
     private func unlock() async {
-        // The Touch ID prompt runs in another process; when it closes macOS hands focus back
-        // to the previously active app, so remember our window and bring it back afterwards.
+        // No Touch ID (lid closed, no sensor): the system password panel is the only option, and
+        // then focus can still wander — bring the window back as best macOS allows.
+        let embedded = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         let window = NSApp.keyWindow
         do {
-            try await LAContext().evaluatePolicy(
-                .deviceOwnerAuthentication,
-                localizedReason: "show the \(name) configuration, which contains this device's private key in plain text. Make sure nobody can see your screen")
-            NSApp.activate()
-            window?.makeKeyAndOrderFront(nil)
+            try await context.evaluatePolicy(
+                embedded ? .deviceOwnerAuthenticationWithBiometrics : .deviceOwnerAuthentication,
+                localizedReason: "show the \(name) configuration and its private key")
+            if !embedded {
+                NSApp.activate()
+                window?.orderFrontRegardless()
+                window?.makeKey()
+            }
             text = try await store.readConfig(name)
-            showingEditor = true
-        } catch let error as LAError where error.code == .userCancel || error.code == .appCancel {
-            return
+        } catch let error as LAError where error.code == .userCancel || error.code == .appCancel || error.code == .systemCancel {
+            dismiss()
         } catch {
             failure = error.localizedDescription
         }
     }
+}
+
+private struct TouchIDView: NSViewRepresentable {
+    let context: LAContext
+    func makeNSView(context _: Context) -> LAAuthenticationView {
+        LAAuthenticationView(context: context, controlSize: .large)
+    }
+    func updateNSView(_: LAAuthenticationView, context _: Context) {}
 }
 
 private struct ConfigEditorSheet: View {
