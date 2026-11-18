@@ -15,10 +15,13 @@ dmg:
   stage: package
   script:
     - scripts/make-dmg.sh
+    # fixed name at the root: no build/ folder in the artifact, and a stable raw link:
+    # https://gitlab.com/PioneerSwine996/wireguard/-/jobs/artifacts/main/raw/WireGuardBar.dmg?job=dmg
+    - mv build/WireGuardBar-*.dmg WireGuardBar.dmg
   artifacts:
     name: "WireGuardBar-$CI_COMMIT_REF_SLUG"
     paths:
-      - build/*.dmg
+      - WireGuardBar.dmg
     expire_in: 90 days
   rules:
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

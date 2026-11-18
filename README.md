@@ -25,7 +25,7 @@ Re-run `sudo ./scripts/install-helper.sh` after `brew upgrade wireguard-tools` t
 
 `scripts/make-dmg.sh` builds `build/WireGuardBar-<version>.dmg` (app, Applications shortcut, and a Helper folder
 with the installer). GitLab CI runs it on every push to `main` and on tags, using a `gitlab-runner` on a Mac
-tagged `macos`, and keeps the DMG as a downloadable job artifact for 90 days.
+tagged `macos`, and keeps `WireGuardBar.dmg` as a job artifact for 90 days. Latest from `main`, as a plain file: https://gitlab.com/PioneerSwine996/wireguard/-/jobs/artifacts/main/raw/WireGuardBar.dmg?job=dmg
 
 ## How it works
 
