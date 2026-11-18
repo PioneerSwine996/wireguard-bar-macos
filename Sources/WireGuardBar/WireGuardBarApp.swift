@@ -15,10 +15,35 @@ struct WireGuardBarApp: App {
         MenuBarExtra {
             MenuBarPanel().environment(store)
         } label: {
-            Image(nsImage: Self.menuBarSymbol(store.tunnels.contains(where: \.isUp) ? "lock.shield.fill" : "shield.slash"))
+            Image(nsImage: Self.menuBarIcon(for: store))
         }
         .menuBarExtraStyle(.window)
     }
+
+    /// Off: crossed-out shield. On: locked shield, or unlocked when the active tunnel
+    /// isn't routing all traffic (split tunnel).
+    private static func menuBarIcon(for store: TunnelStore) -> NSImage {
+        guard let active = store.tunnels.first(where: \.isUp) else { return menuBarSymbol("shield.slash") }
+        return store.routeAll[active.name] == false ? unlockedShield : menuBarSymbol("lock.shield.fill")
+    }
+
+    /// SF Symbols has no unlocked shield, so cut an open lock out of a filled shield,
+    /// the same way lock.shield.fill is drawn.
+    private static let unlockedShield: NSImage = {
+        let shield = menuBarSymbol("shield.fill")
+        guard let lock = NSImage(systemSymbolName: "lock.open.fill", accessibilityDescription: nil)?
+            .withSymbolConfiguration(.init(pointSize: 7.5, weight: .bold)) else { return shield }
+        let image = NSImage(size: shield.size, flipped: false) { rect in
+            shield.draw(in: rect)
+            let lockRect = NSRect(x: rect.midX - lock.size.width / 2 + 0.6, y: rect.midY - lock.size.height / 2 - 0.3,
+                                  width: lock.size.width, height: lock.size.height)
+            lock.draw(in: lockRect, from: .zero, operation: .destinationOut, fraction: 1)
+            return true
+        }
+        image.isTemplate = true
+        image.accessibilityDescription = "WireGuard, split tunnel"
+        return image
+    }()
 
     /// MenuBarExtra ignores `.font` on its label, so size the symbol as an NSImage.
     /// Template so the menu bar still tints it for light/dark.
