@@ -20,6 +20,8 @@ cat > "$app/Contents/Info.plist" <<PLIST
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>LSUIElement</key><true/>
+    <key>NSLocationUsageDescription</key><string>WireGuard Bar reads the current Wi-Fi network name to turn on-demand tunnels on and off. macOS only shares it with apps that have Location access.</string>
+    <key>NSLocationWhenInUseUsageDescription</key><string>WireGuard Bar reads the current Wi-Fi network name to turn on-demand tunnels on and off. macOS only shares it with apps that have Location access.</string>
 </dict>
 </plist>
 PLIST

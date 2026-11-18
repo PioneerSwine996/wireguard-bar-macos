@@ -120,6 +120,8 @@ struct TunnelDetail: View {
                 Text(tunnel.name).font(.title2.bold())
             }
 
+            OnDemandSection(tunnel: tunnel.name)
+
             Section {
                 EditConfigButton(name: tunnel.name)
             }

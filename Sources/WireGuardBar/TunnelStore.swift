@@ -1,3 +1,5 @@
+import CoreLocation
+import CoreWLAN
 import Foundation
 import Observation
 
@@ -10,6 +12,20 @@ final class TunnelStore {
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var refreshing = false
 
+    /// Shortest time the loading orb stays up for a connect/disconnect, so it reads as feedback.
+    static let minimumBusy: TimeInterval = 1.5
+
+    /// On-demand Wi-Fi names per tunnel name.
+    var onDemand: [String: [String]] = UserDefaults.standard.dictionary(forKey: "onDemand") as? [String: [String]] ?? [:] {
+        didSet { UserDefaults.standard.set(onDemand, forKey: "onDemand") }
+    }
+    /// Current Wi-Fi name; macOS only reveals it to apps with Location access.
+    private(set) var currentSSID: String?
+    private(set) var locationStatus: CLAuthorizationStatus = .notDetermined
+    @ObservationIgnored private let location = CLLocationManager()
+    @ObservationIgnored private var lastSSID: String??   // nil = not read yet
+    @ObservationIgnored private var autoConnected: String?   // tunnel that on-demand turned on
+
     init() {
         Task { await refresh() }
         // ponytail: fixed 3 s poll (one sudo call each); pause while no UI is visible if it ever matters.
@@ -21,13 +37,49 @@ final class TunnelStore {
     func refresh() async {
         guard !refreshing else { return }
         refreshing = true
-        defer { refreshing = false }
         appStoreConflict = await Self.connectedAppStoreTunnel()
         do {
             tunnels = Tunnel.parse(status: try await Helper.run("status"))
         } catch {
             self.error = error.localizedDescription
         }
+        locationStatus = location.authorizationStatus
+        currentSSID = CWWiFiClient.shared().interface()?.ssid()
+        refreshing = false
+        await applyOnDemand()
+    }
+
+    /// Acts only when the Wi-Fi network changes, so a manual connect/disconnect sticks
+    /// until the next network change.
+    private func applyOnDemand() async {
+        guard busy.isEmpty, lastSSID != .some(currentSSID) else { return }
+        lastSSID = .some(currentSSID)
+        if let ssid = currentSSID,
+           let target = tunnels.first(where: { onDemand[$0.name]?.contains(ssid) == true }) {
+            if !target.isUp {
+                autoConnected = target.name
+                await setEnabled(target, true)
+            }
+        } else if let name = autoConnected, let tunnel = tunnels.first(where: { $0.name == name }), tunnel.isUp {
+            autoConnected = nil
+            await setEnabled(tunnel, false)
+        }
+    }
+
+    func addOnDemand(_ ssid: String, to tunnel: String) {
+        let ssid = ssid.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !ssid.isEmpty, onDemand[tunnel]?.contains(ssid) != true else { return }
+        onDemand[tunnel, default: []].append(ssid)
+        lastSSID = nil   // re-evaluate against the current network
+    }
+
+    func removeOnDemand(_ ssid: String, from tunnel: String) {
+        onDemand[tunnel]?.removeAll { $0 == ssid }
+        if onDemand[tunnel]?.isEmpty == true { onDemand[tunnel] = nil }
+    }
+
+    func requestLocationAccess() {
+        location.requestWhenInUseAuthorization()
     }
 
     /// Name of a tunnel the App Store WireGuard app has connected, if any (from `scutil --nc list`).
@@ -60,6 +112,7 @@ final class TunnelStore {
         let involved = Set(others + [tunnel.name])
         busy.formUnion(involved)
         defer { busy.subtract(involved) }
+        let started = Date()
         do {
             for name in others {
                 _ = try await Helper.run("down", name)
@@ -68,7 +121,9 @@ final class TunnelStore {
         } catch {
             self.error = error.localizedDescription
         }
-        await refresh()
+        let remaining = Self.minimumBusy - Date().timeIntervalSince(started)
+        if remaining > 0 { try? await Task.sleep(for: .seconds(remaining)) }
+        await refresh()   // before `busy` clears, so the button flips straight to the new state
     }
 
     func readConfig(_ name: String) async throws -> String {
