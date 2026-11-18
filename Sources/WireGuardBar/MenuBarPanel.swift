@@ -1,54 +1,58 @@
 import SwiftUI
 
+/// WireGuard
+/// ─────────────
+/// Tunnel 1      Connect
+/// Tunnel 2   Disconnect
+///
+/// Manage           Quit
 struct MenuBarPanel: View {
     @Environment(TunnelStore.self) private var store
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("WireGuard").font(.headline)
-                Spacer()
-                let active = store.tunnels.filter(\.isUp).count
-                Text("\(active) active").font(.caption).foregroundStyle(.secondary)
-            }
+        VStack(alignment: .leading, spacing: 0) {
+            Text("WireGuard")
+                .font(.headline)
+                .padding(.bottom, 10)
 
             Divider().overlay(.white.opacity(0.15))
 
-            if store.tunnels.isEmpty && store.error == nil {
-                Text("No tunnels in /etc/wireguard")
-                    .font(.caption).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 10) {
+                if store.tunnels.isEmpty && store.error == nil {
+                    Text("No tunnels in /etc/wireguard")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                ForEach(store.tunnels) { tunnel in
+                    MenuTunnelRow(tunnel: tunnel)
+                }
+                if let conflict = store.appStoreConflict {
+                    Notice(text: "The App Store WireGuard app has \"\(conflict)\" connected. Turn it off there.",
+                           color: .orange)
+                }
+                if let error = store.error {
+                    Notice(text: error, color: .red)
+                        .onTapGesture { store.error = nil }
+                }
             }
-            ForEach(store.tunnels) { tunnel in
-                MenuTunnelRow(tunnel: tunnel)
-            }
-            if let conflict = store.appStoreConflict {
-                Notice(text: "The App Store WireGuard app has \"\(conflict)\" connected. Turn it off there, or both apps fight over the same tunnel.",
-                       color: .orange)
-            }
-            if let error = store.error {
-                Notice(text: error, color: .red)
-                    .onTapGesture { store.error = nil }
-            }
-
-            Divider().overlay(.white.opacity(0.15))
+            .padding(.vertical, 12)
 
             HStack {
-                Button("Manage Tunnels…") {
+                Button("Manage") {
                     NSApp.keyWindow?.close()   // the menu bar panel; it doesn't close on its own
                     openWindow(id: "main")
                     NSApp.activate()
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
                 Spacer()
                 Button("Quit") { NSApp.terminate(nil) }
-                    .buttonStyle(.borderless)
-                    .foregroundStyle(.secondary)
             }
+            .buttonStyle(.plain)
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .padding(.top, 4)
         }
-        .padding(18)
-        .frame(width: 320)
+        .padding(16)
+        .frame(width: 264)
         // Fill the whole menu window edge to edge; the system window supplies the rounded corners.
         .background(Color.black.ignoresSafeArea())
         .environment(\.colorScheme, .dark)
@@ -71,34 +75,27 @@ private struct MenuTunnelRow: View {
     let tunnel: Tunnel
 
     var body: some View {
-        HStack(spacing: 10) {
-            StatusDot(tunnel: tunnel)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(tunnel.name).fontWeight(.medium)
-                Text(summary)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+        let busy = store.busy.contains(tunnel.name)
+        HStack(spacing: 8) {
+            StatusDot(tunnel: tunnel).opacity(tunnel.isUp ? 1 : 0)   // reserve the slot so names align
+            Text(tunnel.name)
+                .fontWeight(tunnel.isUp ? .semibold : .regular)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            Button {
+                Task { await store.setEnabled(tunnel, !tunnel.isUp) }
+            } label: {
+                Text(tunnel.isUp ? "Disconnect" : "Connect")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(tunnel.isUp ? Color.white.opacity(0.8) : Color.black)
+                    .frame(width: 76, height: 22)
+                    .background(Capsule().fill(tunnel.isUp ? Color.white.opacity(0.12) : Color.white))
             }
-            Spacer()
-            let busy = store.busy.contains(tunnel.name)
-            Toggle(tunnel.name, isOn: Binding(
-                get: { tunnel.isUp },
-                set: { on in Task { await store.setEnabled(tunnel, on) } }))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .disabled(busy)
-                .opacity(busy ? 0 : 1)   // keeps its space so the row doesn't shift
-                .overlay { if busy { ConnectingOrb() } }
+            .buttonStyle(.plain)
+            .disabled(busy)
+            .opacity(busy ? 0 : 1)   // keeps its space so the row doesn't shift
+            .overlay { if busy { ConnectingOrb() } }
+            .accessibilityLabel("\(tunnel.isUp ? "Disconnect" : "Connect") \(tunnel.name)")
         }
-    }
-
-    private var summary: String {
-        guard tunnel.isUp else { return "Inactive" }
-        let traffic = "↓ \(tunnel.received.byteString)  ↑ \(tunnel.sent.byteString)"
-        return tunnel.isConnected
-            ? "\(traffic) · \(handshakeString(tunnel.latestHandshake))"
-            : "No handshake · \(tunnel.endpoint ?? "no endpoint")"
     }
 }
