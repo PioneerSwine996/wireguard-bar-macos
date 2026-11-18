@@ -89,12 +89,7 @@ private struct ConfigEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("/etc/wireguard/\(name).conf").font(.headline.monospaced())
-                Spacer()
-                Label("Contains private key", systemImage: "key.fill")
-                    .font(.caption).foregroundStyle(.orange)
-            }
+            Text("/etc/wireguard/\(name).conf").font(.headline.monospaced())
             TextEditor(text: $text)
                 .font(.system(.body, design: .monospaced))
                 .autocorrectionDisabled()
