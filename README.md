@@ -21,6 +21,12 @@ open build/WireGuardBar.app
 Copy `build/WireGuardBar.app` to `/Applications` if you want to keep it.
 Re-run `sudo ./scripts/install-helper.sh` after `brew upgrade wireguard-tools` to refresh the patched `wg-quick`.
 
+## DMG builds
+
+`scripts/make-dmg.sh` builds `build/WireGuardBar-<version>.dmg` (app, Applications shortcut, and a Helper folder
+with the installer). GitLab CI runs it on every push to `main` and on tags, using a `gitlab-runner` on a Mac
+tagged `macos`, and keeps the DMG as a downloadable job artifact for 90 days.
+
 ## How it works
 
 The app never runs as root itself. It calls `sudo -n /Library/PrivilegedHelperTools/wgbar-helper` with one of
