@@ -81,13 +81,16 @@ private struct MenuTunnelRow: View {
                     .lineLimit(1)
             }
             Spacer()
+            let busy = store.busy.contains(tunnel.name)
             Toggle(tunnel.name, isOn: Binding(
                 get: { tunnel.isUp },
                 set: { on in Task { await store.setEnabled(tunnel, on) } }))
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.small)
-                .disabled(store.busy.contains(tunnel.name))
+                .disabled(busy)
+                .opacity(busy ? 0 : 1)   // keeps its space so the row doesn't shift
+                .overlay { if busy { ConnectingOrb() } }
         }
     }
 
