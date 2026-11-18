@@ -3,6 +3,7 @@
 ### Features
 
 - Tunnels run through a root-owned, patched copy of `wg-quick` that stops it from hammering `configd`/`airportd`.
+- Import tunnels from `.conf` files with the + button (helper `import` command; re-run the installer to get it).
 - Only one tunnel can be active at a time; errors and App Store WireGuard conflicts show in the menu bar panel.
 
 ### Design Rationale

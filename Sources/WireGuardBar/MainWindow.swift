@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// One background for the whole tunnels window: sidebar, toolbar and detail.
 extension Color {
@@ -8,6 +9,7 @@ extension Color {
 struct MainWindow: View {
     @Environment(TunnelStore.self) private var store
     @State private var selection: String?
+    @State private var importing = false
 
     var body: some View {
         NavigationSplitView {
@@ -21,6 +23,28 @@ struct MainWindow: View {
             .navigationSplitViewColumnWidth(min: 180, ideal: 210)
             .scrollContentBackground(.hidden)
             .background(Color.windowBackground)
+            .safeAreaInset(edge: .bottom) {
+                HStack {
+                    Button { importing = true } label: {
+                        Image(systemName: "plus").font(.body.weight(.medium)).frame(width: 24, height: 24)
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Import a tunnel from a .conf file")
+                    .accessibilityLabel("Import tunnel")
+                    Spacer()
+                }
+                .padding(10)
+            }
+            .fileImporter(isPresented: $importing,
+                          allowedContentTypes: [UTType(filenameExtension: "conf") ?? .data, .plainText]) { result in
+                Task {
+                    do {
+                        selection = try await store.importConfig(from: result.get())
+                    } catch {
+                        store.error = error.localizedDescription
+                    }
+                }
+            }
             .overlay {
                 if store.tunnels.isEmpty {
                     ContentUnavailableView("No Tunnels", systemImage: "lock.shield",

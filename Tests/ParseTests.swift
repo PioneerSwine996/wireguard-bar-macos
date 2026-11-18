@@ -30,3 +30,11 @@ import Testing
     #expect(tunnel.endpoint == nil)
     #expect(!tunnel.isConnected)
 }
+
+@Test func importedFileNamesBecomeValidTunnelNames() {
+    func name(_ file: String) -> String { TunnelStore.tunnelName(for: URL(fileURLWithPath: "/tmp/" + file)) }
+    #expect(name("Home (No-PiHole).conf") == "Home-No-PiHole")
+    #expect(name("wg0.conf") == "wg0")
+    #expect(name("my office vpn server.conf") == "my-office-vpn-s")
+    #expect(name("(((.conf") == "tunnel")
+}

@@ -5,6 +5,7 @@ It needs no Network Extension, so it runs ad-hoc signed without a paid Apple dev
 
 - **Menu bar:** every tunnel with a status dot, an on/off switch, and live transfer and handshake info.
 - **Manage Tunnels window:** tunnel list on the left. The overview on the right shows enabled, connected to server, data sent/received, latest handshake, endpoint and interface.
+- **Import:** the + button under the tunnel list copies a `.conf` file into `/etc/wireguard` (named after the file, made safe for `wg-quick`). It never overwrites an existing tunnel.
 - **Edit Configuration:** warns that the file contains the private key, requires Touch ID (or your login password when Touch ID isn't available), then opens an editor.
 
 ## Setup
@@ -23,7 +24,7 @@ Re-run `sudo ./scripts/install-helper.sh` after `brew upgrade wireguard-tools` t
 ## How it works
 
 The app never runs as root itself. It calls `sudo -n /Library/PrivilegedHelperTools/wgbar-helper` with one of
-`status`, `up NAME`, `down NAME`, `read NAME` or `write NAME`. `install-helper.sh` installs that root-owned script and a
+`status`, `up NAME`, `down NAME`, `read NAME`, `write NAME` or `import NAME`. `install-helper.sh` installs that root-owned script and a
 sudoers rule that allows your account to run only that script without a password. The helper validates tunnel names,
 only touches configs in the root-owned `/etc/wireguard`, and strips private and preshared keys from status output.
 

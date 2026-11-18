@@ -8,8 +8,11 @@ RUN_DIR=/var/run/wireguard
 WG_QUICK=/Library/PrivilegedHelperTools/wgbar-wg-quick   # patched copy from install-helper.sh
 
 die() { echo "$*" >&2; exit 1; }
-conf() {
+name_ok() {
   [[ "${1:-}" =~ ^[a-zA-Z0-9_=+.-]{1,15}$ ]] || die "\"${1:-}\" can't be used as a tunnel name: wg-quick needs 1-15 letters, digits or _=+.- (no spaces or brackets). Rename it, e.g. sudo mv \"$CONF_DIR/${1:-}.conf\" $CONF_DIR/home2.conf"
+}
+conf() {
+  name_ok "${1:-}"
   [ -f "$CONF_DIR/$1.conf" ] || die "no config named $1 in $CONF_DIR"
   echo "$CONF_DIR/$1.conf"
 }
@@ -30,6 +33,12 @@ write)
   c=$(conf "${2:-}")   # existing tunnels only
   tmp=$(mktemp "$CONF_DIR/.wgbar.XXXXXX"); trap 'rm -f "$tmp"' EXIT
   cat > "$tmp"; chmod 600 "$tmp"; mv "$tmp" "$c"; trap - EXIT ;;
+import)
+  name_ok "${2:-}"   # new tunnels only; never overwrites
+  c="$CONF_DIR/$2.conf"
+  [ ! -e "$c" ] || die "A tunnel named $2 already exists."
+  tmp=$(mktemp "$CONF_DIR/.wgbar.XXXXXX"); trap 'rm -f "$tmp"' EXIT
+  cat > "$tmp"; chmod 600 "$tmp"; mv -n "$tmp" "$c" ;;   # EXIT trap cleans up if mv -n refused
 *)
-  die "usage: wgbar-helper status | up NAME | down NAME | read NAME | write NAME" ;;
+  die "usage: wgbar-helper status | import NAME | up NAME | down NAME | read NAME | write NAME" ;;
 esac

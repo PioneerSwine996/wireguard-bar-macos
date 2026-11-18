@@ -78,4 +78,28 @@ final class TunnelStore {
     func writeConfig(_ name: String, _ text: String) async throws {
         _ = try await Helper.run("write", name, input: text)
     }
+
+    /// Copies a .conf file into /etc/wireguard as a new tunnel; returns the tunnel's name.
+    func importConfig(from url: URL) async throws -> String {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        let text = try String(contentsOf: url, encoding: .utf8)
+        guard text.range(of: "[Interface]", options: .caseInsensitive) != nil else {
+            throw Helper.Failure(message: "\(url.lastPathComponent) isn't a WireGuard configuration (no [Interface] section).")
+        }
+        let name = Self.tunnelName(for: url)
+        _ = try await Helper.run("import", name, input: text)
+        await refresh()
+        return name
+    }
+
+    /// wg-quick uses the file name as the interface name: 1–15 of [A-Za-z0-9_=+.-].
+    /// "Home (No-PiHole).conf" → "Home-No-PiHole".
+    nonisolated static func tunnelName(for url: URL) -> String {
+        let allowed = Set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_=+.")
+        let base = url.deletingPathExtension().lastPathComponent
+        let words = base.split { !allowed.contains($0) }
+        let name = String(words.joined(separator: "-").prefix(15))
+        return name.isEmpty || name.allSatisfy({ $0 == "." }) ? "tunnel" : name
+    }
 }
