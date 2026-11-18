@@ -91,7 +91,7 @@ struct GlobeScene {
 
     func draw(in ctx: GraphicsContext, size: CGSize) {
         let r = min(size.width, size.height) * 0.36
-        let c = CGPoint(x: size.width / 2, y: size.height / 2 - 8)
+        let c = CGPoint(x: size.width / 2, y: size.height / 2)
         // gentle sway that keeps every node on the near side
         let project = OrbWeb.makeProjector(yaw: 0.3 * sin(t * 0.18), tilt: 0.3, cx: c.x, cy: c.y, scale: r)
 
@@ -126,12 +126,6 @@ struct GlobeScene {
             drawNode(point, label: label, dim: point == Self.internet, above: point == Self.network,
                      in: ctx, project: project)
         }
-
-        let caption = !up ? "Not connected"
-            : routeAll ? "All traffic goes through the VPN"
-            : "Home network through the VPN · everything else direct"
-        ctx.draw(Text(caption).font(.caption).foregroundStyle(.white.opacity(0.5)),
-                 at: CGPoint(x: size.width / 2, y: size.height - 12))
     }
 
     private func drawSphere(in ctx: GraphicsContext, center c: CGPoint, radius r: Double,

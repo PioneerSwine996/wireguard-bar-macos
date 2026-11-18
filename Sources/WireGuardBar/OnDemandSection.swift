@@ -35,9 +35,6 @@ struct OnDemandSection: View {
             currentNetworkRow
         } header: {
             Text("On-Demand Wi-Fi")
-        } footer: {
-            Text("Connects automatically on these networks and disconnects when you leave them.")
-                .foregroundStyle(.secondary)
         }
     }
 

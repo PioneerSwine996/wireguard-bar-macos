@@ -102,14 +102,9 @@ struct TunnelDetail: View {
                     set: { on in Task { await store.setEnabled(tunnel, on) } }))
                     .disabled(store.busy.contains(tunnel.name))
 
-                Toggle(isOn: Binding(
+                Toggle("Route all traffic", isOn: Binding(
                     get: { store.routeAll[tunnel.name] ?? true },
-                    set: { on in Task { await store.setRouteAll(on, for: tunnel) } })) {
-                    Text("Route all traffic")
-                    Text(store.routeAll[tunnel.name] ?? true
-                         ? "Everything goes through the VPN."
-                         : "Only the tunnel's home network goes through the VPN; everything else uses the current network.")
-                }
+                    set: { on in Task { await store.setRouteAll(on, for: tunnel) } }))
                 .disabled(store.busy.contains(tunnel.name))
 
                 LabeledContent("Connected to server") {
