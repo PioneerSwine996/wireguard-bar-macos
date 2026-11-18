@@ -5,10 +5,12 @@ import SwiftUI
 struct TunnelGlobe: View {
     let tunnel: Tunnel
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var windowVisible = true
     private static let epoch = Date()
 
     var body: some View {
-        TimelineView(.animation(paused: reduceMotion)) { context in
+        // 30 fps is plenty for a slow sway; stop entirely while the window is covered or hidden
+        TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion || !windowVisible)) { context in
             Canvas { ctx, size in
                 GlobeScene(t: context.date.timeIntervalSince(Self.epoch),
                            live: tunnel.isConnected,
@@ -17,7 +19,42 @@ struct TunnelGlobe: View {
                     .draw(in: ctx, size: size)
             }
         }
+        .background(WindowVisibilityReader(visible: $windowVisible))
         .accessibilityLabel(tunnel.isConnected ? "Connected to server" : "Not connected")
+    }
+}
+
+/// Reports whether the hosting window is actually on screen (not covered, minimized or on another Space).
+private struct WindowVisibilityReader: NSViewRepresentable {
+    @Binding var visible: Bool
+
+    func makeNSView(context: Context) -> ObservingView {
+        let view = ObservingView()
+        view.onChange = { visible = $0 }
+        return view
+    }
+    func updateNSView(_: ObservingView, context: Context) {}
+
+    final class ObservingView: NSView {
+        var onChange: ((Bool) -> Void)?
+        private var token: NSObjectProtocol?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let token { NotificationCenter.default.removeObserver(token) }
+            guard let window else { return }
+            token = NotificationCenter.default.addObserver(
+                forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main
+            ) { [weak self] _ in self?.report() }
+            report()
+        }
+
+        private func report() {
+            let visible = window?.occlusionState.contains(.visible) ?? false
+            DispatchQueue.main.async { self.onChange?(visible) }
+        }
+
+        deinit { if let token { NotificationCenter.default.removeObserver(token) } }
     }
 }
 
@@ -48,13 +85,20 @@ struct GlobeScene {
         ctx.fill(glow, with: .radialGradient(Gradient(colors: [Color(white: 1, opacity: 0.06), .clear]),
                                              center: c, startRadius: r * 0.8, endRadius: r * 1.15))
 
-        // dotted sphere, far → near
-        let dots = Self.lattice.map { project($0.0, $0.1, $0.2) }.sorted { $0.2 < $1.2 }
-        for (x, y, z) in dots {
+        // dotted sphere: dots bucketed by depth, one path + one fill per bucket (far → near),
+        // instead of a sort and ~900 separate fills every frame
+        let buckets = 8
+        var layers = [Path](repeating: Path(), count: buckets)
+        for d in Self.lattice {
+            let (x, y, z) = project(d.0, d.1, d.2)
             let depth = (z + 1) / 2
             let dr = 0.5 + 1.1 * depth
-            ctx.fill(Path(ellipseIn: CGRect(x: x - dr, y: y - dr, width: dr * 2, height: dr * 2)),
-                     with: .color(Color(white: 0.85, opacity: 0.05 + 0.4 * depth * depth)))
+            layers[min(buckets - 1, Int(depth * Double(buckets)))]
+                .addEllipse(in: CGRect(x: x - dr, y: y - dr, width: dr * 2, height: dr * 2))
+        }
+        for (i, layer) in layers.enumerated() {
+            let depth = (Double(i) + 0.5) / Double(buckets)
+            ctx.fill(layer, with: .color(Color(white: 0.85, opacity: 0.05 + 0.4 * depth * depth)))
         }
 
         // arc: great circle lifted off the surface
