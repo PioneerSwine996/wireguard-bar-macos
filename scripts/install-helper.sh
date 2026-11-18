@@ -7,6 +7,12 @@ user=${SUDO_USER:?Run through sudo from your own account}
 here=$(cd "$(dirname "$0")" && pwd)
 
 install -m 755 -o root -g wheel "$here/wgbar-helper" /Library/PrivilegedHelperTools/wgbar-helper
+
+# Root-owned, patched wg-quick (see patch-wg-quick.sh). Re-run this script after `brew upgrade wireguard-tools`.
+patched=$(mktemp)
+"$here/patch-wg-quick.sh" /opt/homebrew/bin/wg-quick "$patched"
+install -m 755 -o root -g wheel "$patched" /Library/PrivilegedHelperTools/wgbar-wg-quick
+rm -f "$patched"
 install -d -m 700 -o root -g wheel /etc/wireguard
 
 rule=$(mktemp)

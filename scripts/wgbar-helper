@@ -5,6 +5,7 @@ set -euo pipefail
 export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 CONF_DIR=/etc/wireguard   # root-owned, so a symlink swap can't redirect reads/writes
 RUN_DIR=/var/run/wireguard
+WG_QUICK=/Library/PrivilegedHelperTools/wgbar-wg-quick   # patched copy from install-helper.sh
 
 die() { echo "$*" >&2; exit 1; }
 conf() {
@@ -22,7 +23,7 @@ status)
   # Hide the interface private key (5-field lines) and peer preshared keys (9-field lines).
   wg show all dump | awk -F'\t' -v OFS='\t' 'NF==5{$2="(hidden)"} NF==9{$3="(hidden)"} {print}' ;;
 up|down)
-  c=$(conf "${2:-}"); wg-quick "$1" "$c" ;;
+  c=$(conf "${2:-}"); "$WG_QUICK" "$1" "$c" ;;
 read)
   c=$(conf "${2:-}"); cat "$c" ;;
 write)

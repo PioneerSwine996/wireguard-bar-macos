@@ -18,6 +18,7 @@ open build/WireGuardBar.app
 ```
 
 Copy `build/WireGuardBar.app` to `/Applications` if you want to keep it.
+Re-run `sudo ./scripts/install-helper.sh` after `brew upgrade wireguard-tools` to refresh the patched `wg-quick`.
 
 ## How it works
 
@@ -26,11 +27,15 @@ The app never runs as root itself. It calls `sudo -n /Library/PrivilegedHelperTo
 sudoers rule that allows your account to run only that script without a password. The helper validates tunnel names,
 only touches configs in the root-owned `/etc/wireguard`, and strips private and preshared keys from status output.
 
+Tunnels run through `/Library/PrivilegedHelperTools/wgbar-wg-quick`, a root-owned copy of Homebrew's `wg-quick` that
+`scripts/patch-wg-quick.sh` patches at install time. Stock `wg-quick` on macOS rewrites DNS on every network service
+after every routing message, including plain route lookups, which keeps `configd` and `airportd` busy while a tunnel
+is up. The patch ignores lookups (`RTM_GET`/`RTM_MISS`) and skips services whose DNS is already correct.
+
 ## Security notes
 
 - **Touch ID is an in-app check.** Any program running as your user can also run the helper's `read` and `write`
   commands without a prompt, which means it can read private keys or change a config (and `PostUp` lines run as root).
   This is the cost of passwordless toggling. Uninstall with `sudo rm /etc/sudoers.d/wgbar /Library/PrivilegedHelperTools/wgbar-helper`.
-- **Homebrew is user-writable.** The helper runs `/opt/homebrew/bin/wg-quick` as root, and your account owns
-  `/opt/homebrew`. That's true of any `sudo wg-quick` setup, but the passwordless rule removes the password prompt that
-  would otherwise stand in the way.
+- **Homebrew is user-writable.** The `wg-quick` script itself is a root-owned copy, but it still runs `wg`,
+  `wireguard-go` and `bash` from `/opt/homebrew`, which your account owns.

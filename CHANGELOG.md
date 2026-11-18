@@ -1,3 +1,23 @@
+## [1.1] - 2026-11-17
+
+### Features
+
+- Tunnels run through a root-owned, patched copy of `wg-quick` that stops it from hammering `configd`/`airportd`.
+- Only one tunnel can be active at a time; errors and App Store WireGuard conflicts show in the menu bar panel.
+
+### Design Rationale
+
+- Stock `wg-quick`'s macOS route monitor re-ran `networksetup` on every network service (17 here) after every
+  routing message, including route lookups it and other apps trigger, so it never settled. Ignoring `RTM_GET`/`RTM_MISS`
+  and skipping already-correct services removes the churn without changing behavior on real network changes.
+- Patching at install time (instead of vendoring) tracks the installed Homebrew version and fails loudly if upstream
+  changes the patched lines.
+
+### Notes & Caveats
+
+- Re-run `sudo ./scripts/install-helper.sh` after upgrading wireguard-tools.
+- A tunnel that was already up keeps the old monitor until it is turned off and on again.
+
 ## [1.0] - 2026-11-17
 
 ### Features
