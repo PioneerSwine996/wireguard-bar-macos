@@ -1,5 +1,10 @@
 import SwiftUI
 
+/// One background for the whole tunnels window: sidebar, toolbar and detail.
+extension Color {
+    static let windowBackground = Color(white: 0.035)
+}
+
 struct MainWindow: View {
     @Environment(TunnelStore.self) private var store
     @State private var selection: String?
@@ -14,6 +19,8 @@ struct MainWindow: View {
                 .tag(tunnel.name)
             }
             .navigationSplitViewColumnWidth(min: 180, ideal: 210)
+            .scrollContentBackground(.hidden)
+            .background(Color.windowBackground)
             .overlay {
                 if store.tunnels.isEmpty {
                     ContentUnavailableView("No Tunnels", systemImage: "lock.shield",
@@ -39,6 +46,8 @@ struct MainWindow: View {
             }
         }
         .preferredColorScheme(.dark)
+        .toolbarBackgroundVisibility(.hidden, for: .windowToolbar)
+        .containerBackground(Color.windowBackground, for: .window)
         .onChange(of: store.tunnels.map(\.name), initial: true) { _, names in
             // First open (or the selected tunnel vanished): prefer a tunnel that's on.
             if selection == nil || !names.contains(selection!) {
@@ -58,7 +67,7 @@ struct TunnelDetail: View {
                 .frame(height: 300)
             overview
         }
-        .background(Color(white: 0.035))
+        .background(Color.windowBackground)
     }
 
     private var overview: some View {
