@@ -38,6 +38,7 @@ struct MainWindow: View {
                     .onTapGesture { store.error = nil }
             }
         }
+        .preferredColorScheme(.dark)
         .onChange(of: store.tunnels.map(\.name), initial: true) { _, names in
             // First open (or the selected tunnel vanished): prefer a tunnel that's on.
             if selection == nil || !names.contains(selection!) {
@@ -52,6 +53,15 @@ struct TunnelDetail: View {
     let tunnel: Tunnel
 
     var body: some View {
+        VStack(spacing: 0) {
+            TunnelGlobe(tunnel: tunnel)
+                .frame(height: 300)
+            overview
+        }
+        .background(Color(white: 0.035))
+    }
+
+    private var overview: some View {
         Form {
             Section {
                 Toggle("Enabled", isOn: Binding(
@@ -65,8 +75,12 @@ struct TunnelDetail: View {
                         Text(!tunnel.isUp ? "No" : tunnel.isConnected ? "Yes" : "No recent handshake")
                     }
                 }
-                LabeledContent("Data sent", value: tunnel.isUp ? tunnel.sent.byteString : "—")
-                LabeledContent("Data received", value: tunnel.isUp ? tunnel.received.byteString : "—")
+                LabeledContent("Data sent") {
+                    TrafficValue(text: tunnel.isUp ? tunnel.sent.byteString : "—", color: GlobeScene.send)
+                }
+                LabeledContent("Data received") {
+                    TrafficValue(text: tunnel.isUp ? tunnel.received.byteString : "—", color: GlobeScene.receive)
+                }
                 LabeledContent("Latest handshake", value: tunnel.isUp ? handshakeString(tunnel.latestHandshake) : "—")
                 LabeledContent("Endpoint", value: tunnel.endpoint ?? "—")
             } header: {
@@ -78,5 +92,18 @@ struct TunnelDetail: View {
             }
         }
         .formStyle(.grouped)
+        .scrollContentBackground(.hidden)
+    }
+}
+
+/// A value with the globe's packet colour beside it (green = sent, blue = received).
+private struct TrafficValue: View {
+    let text: String
+    let color: Color
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle().fill(color).frame(width: 7, height: 7)
+            Text(text)
+        }
     }
 }

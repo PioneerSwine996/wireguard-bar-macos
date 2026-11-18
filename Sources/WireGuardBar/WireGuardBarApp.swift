@@ -8,7 +8,7 @@ struct WireGuardBarApp: App {
         Window("WireGuard Tunnels", id: "main") {
             MainWindow()
                 .environment(store)
-                .frame(minWidth: 640, minHeight: 400)
+                .frame(minWidth: 660, minHeight: 720)
         }
         .defaultLaunchBehavior(.suppressed)
 

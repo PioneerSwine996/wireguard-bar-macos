@@ -138,7 +138,7 @@ enum OrbWeb {
 
     // MARK: core.ts primitives
 
-    private static func makeProjector(yaw: Double, tilt: Double, cx: Double, cy: Double, scale: Double)
+    static func makeProjector(yaw: Double, tilt: Double, cx: Double, cy: Double, scale: Double)
         -> (Double, Double, Double) -> (Double, Double, Double) {
         let (st, ct, sy, cyw) = (sin(tilt), cos(tilt), sin(yaw), cos(yaw))
         return { x, y, z in
@@ -150,7 +150,7 @@ enum OrbWeb {
         }
     }
 
-    private static func fibDir(_ i: Int, _ n: Int) -> (Double, Double, Double) {
+    static func fibDir(_ i: Int, _ n: Int) -> (Double, Double, Double) {
         let golden = Double.pi * (3 - 5.0.squareRoot())
         let y = 1 - 2 * (Double(i) + 0.5) / Double(n)
         let rad = (1 - y * y).squareRoot()
