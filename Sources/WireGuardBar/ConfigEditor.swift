@@ -30,7 +30,7 @@ private struct ConfigSheet: View {
             ConfigEditorSheet(name: name, text: unlocked)
         } else {
             VStack(spacing: 14) {
-                TouchIDView(context: context).frame(width: 64, height: 64)
+                TouchIDView(context: context).fixedSize()   // the view draws at its own intrinsic size
                 Text("Touch ID to show \(name)").font(.headline)
                 Text("The configuration contains this device's private key in plain text. Make sure nobody can see your screen.")
                     .font(.callout).foregroundStyle(.secondary)
@@ -74,7 +74,7 @@ private struct ConfigSheet: View {
 private struct TouchIDView: NSViewRepresentable {
     let context: LAContext
     func makeNSView(context _: Context) -> LAAuthenticationView {
-        LAAuthenticationView(context: context, controlSize: .large)
+        LAAuthenticationView(context: context, controlSize: .small)
     }
     func updateNSView(_: LAAuthenticationView, context _: Context) {}
 }
