@@ -4,6 +4,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 swift build -c release
 app=build/WireGuardBar.app
+# version from the tag being released (v1.2.3 -> 1.2.3), else the latest tag, else 0.0.0
+tag=${CI_COMMIT_TAG:-$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0)}
+version=${tag#v}
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS"
 cp .build/release/WireGuardBar "$app/Contents/MacOS/"
@@ -19,7 +22,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
     <key>CFBundleIdentifier</key><string>local.wireguardbar</string>
     <key>CFBundleName</key><string>WireGuard Bar</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>1.0.0</string>
+    <key>CFBundleShortVersionString</key><string>$version</string>
     <key>CFBundleVersion</key><string>1</string>
     <key>LSMinimumSystemVersion</key><string>15.0</string>
     <key>LSUIElement</key><true/>

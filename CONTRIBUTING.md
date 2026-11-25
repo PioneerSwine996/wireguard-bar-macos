@@ -36,17 +36,16 @@ When the mirror pushes `main`, GitHub sees the pull request's commits on `main` 
 
 ## Releasing (maintainers)
 
-Update `CHANGELOG.md` and the version in `scripts/build-app.sh`, commit, then tag and push:
+Update `CHANGELOG.md`, commit, then tag and push (the app's version comes from the tag):
 
 ```bash
 git tag -s v1.2.3 -m "WireGuard Bar 1.2.3"
 git push origin v1.2.3
 ```
 
-CI builds the DMG, creates the GitLab Release, and publishes the same release with `WireGuardBar.dmg` on GitHub.
-One-time setup: a fine-grained GitHub token with Contents read/write on `wireguard-bar-macos`, stored in GitLab as
-the masked, protected CI/CD variable `GITHUB_RELEASE_TOKEN`, and `v*` added under Settings → Repository →
-Protected tags.
+The tag goes to both remotes, and each builds and releases it separately: GitLab CI (on the Mac runner) creates
+the GitLab Release, and GitHub Actions (`.github/workflows/release.yml`) builds the DMG on GitHub's macOS runner and
+publishes the GitHub Release. No tokens or secrets are needed on either side.
 
 ## Style
 
