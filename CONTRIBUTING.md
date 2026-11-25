@@ -34,6 +34,20 @@ git push origin main
 
 When the mirror pushes `main`, GitHub sees the pull request's commits on `main` and marks it merged.
 
+## Releasing (maintainers)
+
+Update `CHANGELOG.md` and the version in `scripts/build-app.sh`, commit, then tag and push:
+
+```bash
+git tag -s v1.2.3 -m "WireGuard Bar 1.2.3"
+git push origin v1.2.3
+```
+
+CI builds the DMG, creates the GitLab Release, and publishes the same release with `WireGuardBar.dmg` on GitHub.
+One-time setup: a fine-grained GitHub token with Contents read/write on `wireguard-bar-macos`, stored in GitLab as
+the masked, protected CI/CD variable `GITHUB_RELEASE_TOKEN`, and `v*` added under Settings → Repository →
+Protected tags.
+
 ## Style
 
 - Swift: follow the existing code; small files, no new dependencies.
