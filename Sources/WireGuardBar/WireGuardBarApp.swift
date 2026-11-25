@@ -15,7 +15,8 @@ struct WireGuardBarApp: App {
         MenuBarExtra {
             MenuBarPanel().environment(store)
         } label: {
-            Image(nsImage: Self.menuBarIcon(for: store))
+            MenuBarLabel(icon: Self.menuBarIcon(for: store))
+                .environment(store)
         }
         .menuBarExtraStyle(.window)
     }
@@ -52,5 +53,23 @@ struct WireGuardBarApp: App {
             .withSymbolConfiguration(.init(pointSize: 16, weight: .regular)) ?? NSImage()
         image.isTemplate = true
         return image
+    }
+}
+
+/// The menu bar icon. It's the one view that exists from launch, so it also opens the setup
+/// window the first time the app finds something missing (new install or outdated helper).
+private struct MenuBarLabel: View {
+    @Environment(TunnelStore.self) private var store
+    @Environment(\.openWindow) private var openWindow
+    let icon: NSImage
+
+    var body: some View {
+        Image(nsImage: icon)
+            .onChange(of: store.setup) { old, new in
+                if old == .checking && new != .ready {
+                    openWindow(id: "main")
+                    NSApp.activate()
+                }
+            }
     }
 }

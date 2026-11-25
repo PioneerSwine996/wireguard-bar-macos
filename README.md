@@ -20,26 +20,16 @@ Requires macOS 15 or later on Apple silicon or Intel.
 
 ## Install
 
-1. Install the WireGuard tools:
+You need [Homebrew](https://brew.sh).
 
-   ```bash
-   brew install wireguard-tools
-   ```
-
-2. Download the latest DMG:
+1. Download the latest DMG:
    [WireGuardBar.dmg](https://gitlab.com/PioneerSwine996/wireguard/-/jobs/artifacts/main/raw/WireGuardBar.dmg?job=dmg)
-3. Open it, drag **WireGuard Bar** to Applications, and copy the **Helper** folder somewhere (for example
-   Downloads).
-4. Install the helper once (it asks for your password):
+2. Open it and drag **WireGuard Bar** to Applications.
+3. Open WireGuard Bar. It isn't notarized, so the first time, right-click it and choose **Open**.
+4. The setup screen installs the WireGuard tools, then the helper. macOS asks for Touch ID or your password once.
+5. Click **+** to import your tunnel's `.conf` file.
 
-   ```bash
-   sudo ~/Downloads/Helper/install-helper.sh
-   ```
-
-5. Open WireGuard Bar. The app isn't notarized, so the first time, right-click it and choose **Open**.
-6. Click **Manage**, then **+** to import your tunnel's `.conf` file.
-
-Re-run the helper installer after `brew upgrade wireguard-tools`.
+When an update needs a newer helper, the setup screen comes back to update it.
 
 ## Build from source
 
@@ -49,8 +39,10 @@ cd wireguard
 swift test
 scripts/build-app.sh          # build/WireGuardBar.app
 scripts/make-dmg.sh           # build/WireGuardBar-<version>.dmg
-sudo scripts/install-helper.sh
 ```
+
+The built app installs its helper from the setup screen. To install it by hand instead:
+`sudo scripts/install-helper.sh "$(whoami)"`.
 
 Needs Xcode 16 or later (Swift 6).
 

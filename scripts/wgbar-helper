@@ -7,6 +7,7 @@ export PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 CONF_DIR=/etc/wireguard   # root-owned, so a symlink swap can't redirect reads/writes
 RUN_DIR=/var/run/wireguard
 WG_QUICK=/Library/PrivilegedHelperTools/wgbar-wg-quick   # patched copy from install-helper.sh
+HELPER_VERSION=3   # bump with any command change; the app compares it to its own copy
 OVERRIDE_DIR=/var/run/wgbar   # per-connection config copies with AllowedIPs overridden
 
 die() { echo "$*" >&2; exit 1; }
@@ -20,6 +21,8 @@ conf() {
 }
 
 case "${1:-}" in
+version)
+  echo "$HELPER_VERSION" ;;
 status)
   for f in "$CONF_DIR"/*.conf; do [ -e "$f" ] && printf 'config\t%s\n' "$(basename "$f" .conf)"; done
   for f in "$RUN_DIR"/*.name; do
@@ -61,5 +64,5 @@ import)
   tmp=$(mktemp "$CONF_DIR/.wgbar.XXXXXX"); trap 'rm -f "$tmp"' EXIT
   cat > "$tmp"; chmod 600 "$tmp"; mv -n "$tmp" "$c" ;;   # EXIT trap cleans up if mv -n refused
 *)
-  die "usage: wgbar-helper status | addresses NAME | import NAME | up NAME | down NAME | read NAME | write NAME" ;;
+  die "usage: wgbar-helper version | status | addresses NAME | import NAME | up NAME | down NAME | read NAME | write NAME" ;;
 esac

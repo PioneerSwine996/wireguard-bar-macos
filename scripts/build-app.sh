@@ -7,6 +7,9 @@ app=build/WireGuardBar.app
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS"
 cp .build/release/WireGuardBar "$app/Contents/MacOS/"
+# the app installs its own root helper from these (Install Helper, admin prompt)
+mkdir -p "$app/Contents/Resources/Helper"
+cp scripts/install-helper.sh scripts/wgbar-helper scripts/patch-wg-quick.sh "$app/Contents/Resources/Helper/"
 cat > "$app/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

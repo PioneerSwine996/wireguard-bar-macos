@@ -19,7 +19,15 @@ struct MenuBarPanel: View {
             Divider().overlay(.white.opacity(0.15))
 
             VStack(alignment: .leading, spacing: 10) {
-                if store.tunnels.isEmpty && store.error == nil {
+                if store.setup != .ready && store.setup != .checking {
+                    Button("Finish Setting Up…") {
+                        NSApp.keyWindow?.close()
+                        openWindow(id: "main")
+                        NSApp.activate()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                } else if store.tunnels.isEmpty && store.error == nil {
                     Text("No tunnels in /etc/wireguard")
                         .font(.caption).foregroundStyle(.secondary)
                 }

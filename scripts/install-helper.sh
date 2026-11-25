@@ -1,9 +1,13 @@
 #!/bin/bash
-# Installs the root helper and a sudoers rule that lets your account run only that helper
-# without a password. Run once: sudo ./scripts/install-helper.sh
+# Installs the root helper and a sudoers rule that lets one account run only that helper
+# without a password. WireGuard Bar runs this for you (Install Helper, with an administrator
+# prompt); by hand: sudo ./scripts/install-helper.sh [username]
 set -euo pipefail
 [ "$(id -u)" = 0 ] || { echo "Run with sudo: sudo $0" >&2; exit 1; }
-user=${SUDO_USER:?Run through sudo from your own account}
+user=${1:-${SUDO_USER:-}}
+[[ "$user" =~ ^[A-Za-z0-9._-]+$ ]] && [ "$user" != root ] && id "$user" >/dev/null 2>&1 \
+  || { echo "Pass the account to allow, e.g. sudo $0 \$(whoami)" >&2; exit 1; }
+[ -x /opt/homebrew/bin/wg-quick ] || { echo "Install wireguard-tools first: brew install wireguard-tools" >&2; exit 1; }
 here=$(cd "$(dirname "$0")" && pwd)
 
 install -m 755 -o root -g wheel "$here/wgbar-helper" /Library/PrivilegedHelperTools/wgbar-helper

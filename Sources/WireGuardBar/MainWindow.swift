@@ -33,6 +33,9 @@ struct MainWindow: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .overlay {
+            if store.setup != .ready && store.setup != .checking { SetupView() }
+        }
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button {

@@ -47,3 +47,15 @@ import Testing
     #expect(SplitRoutes.allowedIPs(fromConfigLines: "Address = 10.8.0.2") == "10.8.0.0/24")
     #expect(SplitRoutes.allowedIPs(fromConfigLines: "DNS = 1.1.1.1\nDNS = 1.1.1.1") == "1.1.1.1/32")
 }
+
+@Test func helperVersionMatchesTheScript() throws {
+    let path = #filePath.replacingOccurrences(of: "Tests/ParseTests.swift", with: "scripts/wgbar-helper")
+    let script = try String(contentsOfFile: path, encoding: .utf8)
+    #expect(script.contains("HELPER_VERSION=\(HelperInstaller.expectedVersion) "))
+}
+
+@Test func adminCommandQuoting() {
+    #expect(HelperInstaller.shellQuote("/Applications/My App.app/x.sh") == "'/Applications/My App.app/x.sh'")
+    #expect(HelperInstaller.shellQuote("it's") == "'it'\\''s'")
+    #expect(HelperInstaller.appleScriptString(#"a "b" \c"#) == #""a \"b\" \\c""#)
+}

@@ -4,6 +4,8 @@ First public release.
 
 ### Features
 
+- Setup screen on first launch: installs wireguard-tools with Homebrew, then the root helper through macOS's administrator prompt (Touch ID or password). It returns when an update needs a newer helper (helper `version` command).
+- The DMG is now just the app; the helper ships inside it.
 - MIT license, contributor guide, and a GitHub mirror that accepts pull requests (built and tested by GitHub Actions).
 - Rewritten README with install, build, security and uninstall instructions.
 

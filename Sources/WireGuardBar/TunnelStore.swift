@@ -7,6 +7,8 @@ import Observation
 final class TunnelStore {
     var tunnels: [Tunnel] = []
     private(set) var busy: Set<String> = []
+    /// Until this is .ready the app shows the setup screen instead of tunnels.
+    private(set) var setup: SetupState = .checking
     var error: String?
 
     @ObservationIgnored private var timer: Timer?
@@ -59,9 +61,19 @@ final class TunnelStore {
         }
     }
 
+    func checkSetup() async {
+        setup = await HelperInstaller.check()
+        if setup == .ready { error = nil }
+    }
+
     func refresh() async {
         guard !refreshing else { return }
         refreshing = true
+        if setup != .ready {
+            // re-check each tick so installing wireguard-tools in Terminal is picked up too
+            await checkSetup()
+            guard setup == .ready else { refreshing = false; return }
+        }
         appStoreConflict = await Self.connectedAppStoreTunnel()
         do {
             tunnels = Tunnel.parse(status: try await Helper.run("status"))
