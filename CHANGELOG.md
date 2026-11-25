@@ -1,3 +1,16 @@
+## [1.0.0] - 2026-11-25
+
+First public release.
+
+### Features
+
+- MIT license, contributor guide, and a GitHub mirror that accepts pull requests (built and tested by GitHub Actions).
+- Rewritten README with install, build, security and uninstall instructions.
+
+### Notes & Caveats
+
+- The bundle identifier stays `local.wireguardbar` so existing installs keep their settings and Location access.
+
 ## [1.1] - 2026-11-17
 
 ### Features

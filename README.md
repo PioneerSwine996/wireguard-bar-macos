@@ -1,49 +1,105 @@
 # WireGuard Bar
 
-A small macOS app for running WireGuard tunnels with Homebrew's `wireguard-tools` (`wg-quick` + `wireguard-go`).
-It needs no Network Extension, so it runs ad-hoc signed without a paid Apple developer account.
+A menu bar app for macOS that runs WireGuard tunnels with Homebrew's `wireguard-tools`.
 
-- **Menu bar:** every tunnel with a status dot, an on/off switch, and live transfer and handshake info.
-- **Manage Tunnels window:** tunnel list on the left. The overview on the right shows enabled, connected to server, data sent/received, latest handshake, endpoint and interface.
-- **Import:** the + button under the tunnel list copies a `.conf` file into `/etc/wireguard` (named after the file, made safe for `wg-quick`). It never overwrites an existing tunnel.
-- **Route all traffic:** on sends everything through the VPN (`AllowedIPs = 0.0.0.0/0, ::/0`); off sends only the tunnel's own subnets (from `Address`, host addresses widened to /24 or /64) and its DNS servers. The helper applies this to a root-only copy in `/var/run/wgbar`; the config file itself is never changed. Tunnels you never toggle run their config as written.
-- **Edit Configuration:** warns that the file contains the private key, requires Touch ID (or your login password when Touch ID isn't available), then opens an editor.
+It doesn't use a Network Extension, so it doesn't need an Apple developer account or the App Store, and it keeps
+working when the official app doesn't. A Windows version lives in
+[wireguard-bar-windows](https://gitlab.com/PioneerSwine996/wireguard-bar-windows).
 
-## Setup
+- **Menu bar:** every tunnel with Connect / Disconnect. The icon shows whether a tunnel is on, and whether it routes
+  all traffic (locked shield) or only your home network (unlocked shield).
+- **Manage window:** an animated globe showing the route your traffic takes, plus connection status, data sent and
+  received, latest handshake and endpoint. The sidebar collapses to numbered badges.
+- **One tunnel at a time:** connecting one disconnects the others.
+- **Route all traffic:** off sends only the tunnel's own subnets and DNS through the VPN; everything else uses your
+  current network. Your config file is never changed.
+- **On-Demand:** connect automatically on chosen Wi-Fi networks and disconnect when you leave them.
+- **Import and edit:** add tunnels from `.conf` files; editing a config requires Touch ID.
+
+Requires macOS 15 or later on Apple silicon or Intel.
+
+## Install
+
+1. Install the WireGuard tools:
+
+   ```bash
+   brew install wireguard-tools
+   ```
+
+2. Download the latest DMG:
+   [WireGuardBar.dmg](https://gitlab.com/PioneerSwine996/wireguard/-/jobs/artifacts/main/raw/WireGuardBar.dmg?job=dmg)
+3. Open it, drag **WireGuard Bar** to Applications, and copy the **Helper** folder somewhere (for example
+   Downloads).
+4. Install the helper once (it asks for your password):
+
+   ```bash
+   sudo ~/Downloads/Helper/install-helper.sh
+   ```
+
+5. Open WireGuard Bar. The app isn't notarized, so the first time, right-click it and choose **Open**.
+6. Click **Manage**, then **+** to import your tunnel's `.conf` file.
+
+Re-run the helper installer after `brew upgrade wireguard-tools`.
+
+## Build from source
 
 ```bash
-brew install wireguard-tools
-sudo ./scripts/install-helper.sh
-sudo cp ~/Downloads/wg0.conf /etc/wireguard/ && sudo chmod 600 /etc/wireguard/wg0.conf
-./scripts/build-app.sh
-open build/WireGuardBar.app
+git clone https://gitlab.com/PioneerSwine996/wireguard.git
+cd wireguard
+swift test
+scripts/build-app.sh          # build/WireGuardBar.app
+scripts/make-dmg.sh           # build/WireGuardBar-<version>.dmg
+sudo scripts/install-helper.sh
 ```
 
-Copy `build/WireGuardBar.app` to `/Applications` if you want to keep it.
-Re-run `sudo ./scripts/install-helper.sh` after `brew upgrade wireguard-tools` to refresh the patched `wg-quick`.
-
-## DMG builds
-
-`scripts/make-dmg.sh` builds `build/WireGuardBar-<version>.dmg` (app, Applications shortcut, and a Helper folder
-with the installer). GitLab CI runs it on every push to `main` and on tags, using a `gitlab-runner` on a Mac
-tagged `macos`, and keeps `WireGuardBar.dmg` as a job artifact for 90 days. Latest from `main`, as a plain file: https://gitlab.com/PioneerSwine996/wireguard/-/jobs/artifacts/main/raw/WireGuardBar.dmg?job=dmg
+Needs Xcode 16 or later (Swift 6).
 
 ## How it works
 
-The app never runs as root itself. It calls `sudo -n /Library/PrivilegedHelperTools/wgbar-helper` with one of
-`status`, `up NAME [ALLOWEDIPS]`, `down NAME`, `addresses NAME`, `read NAME`, `write NAME` or `import NAME`. `install-helper.sh` installs that root-owned script and a
-sudoers rule that allows your account to run only that script without a password. The helper validates tunnel names,
-only touches configs in the root-owned `/etc/wireguard`, and strips private and preshared keys from status output.
+The app never runs as root. It calls one root-owned script, `/Library/PrivilegedHelperTools/wgbar-helper`, through
+`sudo -n`, and the installer adds a sudoers rule that lets your account run only that script without a password. The
+helper accepts a fixed set of commands (`status`, `up`, `down`, `addresses`, `read`, `write`, `import`), validates
+tunnel names, only touches configs in the root-owned `/etc/wireguard`, and strips private and preshared keys from
+status output.
 
-Tunnels run through `/Library/PrivilegedHelperTools/wgbar-wg-quick`, a root-owned copy of Homebrew's `wg-quick` that
-`scripts/patch-wg-quick.sh` patches at install time. Stock `wg-quick` on macOS rewrites DNS on every network service
-after every routing message, including plain route lookups, which keeps `configd` and `airportd` busy while a tunnel
-is up. The patch ignores lookups (`RTM_GET`/`RTM_MISS`) and skips services whose DNS is already correct.
+Tunnels run through a root-owned copy of Homebrew's `wg-quick`, patched at install time
+(`scripts/patch-wg-quick.sh`). Stock `wg-quick` on macOS rewrites DNS on every network service after every routing
+message, including plain route lookups, which keeps `configd` and `airportd` busy while a tunnel is up. The patch
+ignores lookups and skips services whose DNS is already correct.
 
-## Security notes
+With **Route all traffic** off, the helper connects with a root-only copy of the config in `/var/run/wgbar` whose
+`AllowedIPs` lists only the tunnel's `Address` subnets (host addresses widened to /24 or /64) and its DNS servers.
 
-- **Touch ID is an in-app check.** Any program running as your user can also run the helper's `read` and `write`
-  commands without a prompt, which means it can read private keys or change a config (and `PostUp` lines run as root).
-  This is the cost of passwordless toggling. Uninstall with `sudo rm /etc/sudoers.d/wgbar /Library/PrivilegedHelperTools/wgbar-helper`.
-- **Homebrew is user-writable.** The `wg-quick` script itself is a root-owned copy, but it still runs `wg`,
+On-Demand reads the current Wi-Fi name, which macOS only reveals to apps with Location access, so the app asks for
+it the first time you use that section.
+
+## Security
+
+- **Touch ID only protects the app's editor.** Any program running as your user can call the helper's `read` and
+  `write` commands without a prompt, so it could read private keys or change a config (and `PostUp` lines run as
+  root). That's the cost of passwordless connecting.
+- **Homebrew is user-writable.** The `wg-quick` script is a root-owned copy, but it still runs `wg`,
   `wireguard-go` and `bash` from `/opt/homebrew`, which your account owns.
+
+Report security issues privately to the maintainer on GitLab rather than in a public issue.
+
+### Uninstall
+
+```bash
+sudo rm /etc/sudoers.d/wgbar /Library/PrivilegedHelperTools/wgbar-helper /Library/PrivilegedHelperTools/wgbar-wg-quick
+```
+
+Then delete the app. Your tunnel configs stay in `/etc/wireguard`.
+
+## Contributing
+
+The main repository is on [GitLab](https://gitlab.com/PioneerSwine996/wireguard). Pull requests are welcome on the
+[GitHub mirror](https://github.com/PioneerSwine996/wireguard-bar-macos); see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Credits and license
+
+MIT; see [LICENSE](LICENSE). The connecting animation is a port of
+[thinking-orbs](https://github.com/Jakubantalik/thinking-orbs) by Jakub Antalik (MIT).
+
+WireGuard is a registered trademark of Jason A. Donenfeld. This project is not affiliated with or endorsed by the
+WireGuard project.

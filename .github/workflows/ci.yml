@@ -1,0 +1,17 @@
+# Builds and tests pull requests on the GitHub mirror (the main pipeline runs on GitLab).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        run: swift test
+      - name: Build app
+        run: scripts/build-app.sh
